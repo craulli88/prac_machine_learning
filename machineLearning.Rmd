@@ -1,0 +1,78 @@
+Pratical Machine Learning Writeup 
+========================================================
+
+Background 
+========================================================
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset). 
+
+I expect the sample error to be a few percent at worst but should be less than 1%.
+
+Load the Data
+========================================================
+
+Here I do the initial load of the data from both the training and testing csv files provided.  I also removed the NA values.
+
+```{r}
+setwd("C:/Users/Chris/Downloads/")
+training <- read.csv("C:/Users/Chris/Downloads/pml-training.csv", sep = ",", na.strings=c("", "NA", "NULL"))
+testing <- read.csv("C:/Users/Chris/Downloads/pml-testing.csv", sep = ",", na.strings=c("", "NA", "NULL"))
+```
+
+Preprocess
+========================================================
+
+Here I needed to seperate the training and testing data.  I used the createDataPartition function from the caret package.  I split 75% for training and 25% for testing.
+
+```{r}
+library(caret)
+set.seed(1988)
+trainingSplit <- createDataPartition(training$classe, p = 0.75, list = FALSE)
+training2 <- training[trainingSplit, ]
+testing2 <- training[-trainingSplit, ]
+```
+
+Features
+========================================================
+
+Much of the data copntains irrevelant features that I want to eliminate and do not need for the analysis.  I want to delete the columns that have a lot of missing values or NAs since they won't be helpful.
+
+```{r}
+fun1 <- function(x) {sum(!(is.na(x) | x == ""))}
+count <- sapply(training2, fun1)
+empty <- names(count[count < 0.85 * length(training2$classe)])
+training2 <- training2[, !names(training2) %in% empty]
+training2 <- na.omit(training2)
+```
+
+Training Model
+========================================================
+
+This is using the random forest model from the randomForest R package.
+ 
+```{r}
+library(randomForest)
+Model <- randomForest(classe ~ ., data = training2, importance = TRUE)
+Model
+```
+
+Training Set
+========================================================
+This section tests the accuracy of our training set and it seems to be perfect.  Needed to install the e1071 package to get the predict function to work.
+
+```{r}
+trainingPrediction <- predict(Model, training2)
+confuMatrix1 <- confusionMatrix(trainingPrediction, training2$classe)
+confuMatrix1
+```
+
+Out of Sample error w/ Cross-Validation
+========================================================
+This now predicts the accuracy against the out-of-sample and cross validation. The error is less than 1%, a good result.
+
+```{r}
+OOSPrediction <- predict(Model, testing2)
+confusionMatrix2 <- confusionMatrix(OOSPrediction, testing2$classe)
+confusionMatrix2
+```
+
